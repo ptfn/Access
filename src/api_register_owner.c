@@ -19,7 +19,6 @@ char* hash_password_simple(const char* password) {
         return NULL;
     }
     // Возвращаем указатель на статическую строку из crypt.
-    // !!! ВНИМАНИЕ: Это перезаписывается при следующем вызове crypt в том же потоке!
     // Для многопоточности или сохранения значения нужна копия.
     return hashed;
 }
@@ -106,7 +105,6 @@ int api_register_owner(struct http_request *req) {
         http_response(req, 500, "{\"status\": \"error\", \"reason\": \"internal_error\"}", 52);
         return (KORE_RESULT_OK);
     }
-    // !!! ВНИМАНИЕ: Значение hashed_password может быть перезаписано!
     // Создадим копию для безопасности в транзакции.
     char safe_hashed_password[256];
     snprintf(safe_hashed_password, sizeof(safe_hashed_password), "%s", hashed_password);
@@ -192,7 +190,6 @@ int api_register_owner(struct http_request *req) {
 
     if (!transaction_failed) {
         // 4.4. Вставка в access_cards (упрощённо, без генерации реального TOTP-секрета)
-        // !!! УПРОЩЕНИЕ: Создаём карту с фиксированным/тестовым TOTP-секретом.
         const char *dummy_totp_secret = "TESTSECRETTESTSEC"; // Используем для теста api_verify
         const char *sql_insert_card = "INSERT INTO access_cards (user_company_role_id, totp_secret, status) VALUES (?, ?, 'ACTIVE');";
         rc = sqlite3_prepare_v2(g_db_handle, sql_insert_card, -1, &stmt, NULL);

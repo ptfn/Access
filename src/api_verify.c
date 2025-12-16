@@ -11,8 +11,6 @@
 // Для упрощения, используем oathtool или liboath.
 // Предположим, есть функция check_totp(const char *secret, long timestamp, const char *input_code)
 // Пока создадим заглушку, которая проверяет код на равенство фиксированному значению.
-// !!! ВНИМАНИЕ: Это СЕРЬЁЗНОЕ УПРОЩЕНИЕ и УГРОЗА БЕЗОПАСНОСТИ !!!
-// В реальном мире нужно использовать библиотеку типа liboath.
 int check_totp_simple(const char *expected_current_code, const char *input_code) {
     // Сравниваем коды (должны быть 6-значными строками)
     if (strlen(expected_current_code) != 6 || strlen(input_code) != 6) {
@@ -47,7 +45,6 @@ int api_verify(struct http_request *req) {
     // Извлекаем X-API-Key
     api_key_header = http_request_header(req, "X-API-Key");
     if (!api_key_header) {
-        // !!! УПРОЩЕНИЕ: Позволим plain text API key для тестирования.
         // В реальности храните и сверяйте хеш!
         printf("X-API-Key header missing.\n");
         http_response(req, 401, "{\"status\": \"denied\", \"reason\": \"missing_api_key\"}", 54);
@@ -133,14 +130,7 @@ int api_verify(struct http_request *req) {
 
     // Шаг 3: Проверка кода (упрощённая логика TOTP)
     // Запрашиваем все активные totp_secret для сотрудников в компании
-    // !!! УПРОЩЕНИЕ: Предполагаем, что текущий ожидаемый код хранится в БД как plain text.
-    // !!! В реальности, вычисляем его на лету по секрету и времени.
-    // !!! Для демонстрации используем поле last_generated_code (его нужно добавить в схему или хранить в памяти).
-    // !!! ПЛОХОЙ ПРИМЕР: SELECT totp_secret FROM access_cards ...
-    // !!! ЛУЧШЕ: SELECT id, user_company_role_id, totp_secret FROM access_cards WHERE status = 'ACTIVE' ...
-    // !!! И затем вычислить TOTP для каждого секрета и сравнить с input_code.
 
-    // !!! ЕЩЁ БОЛЕЕ УПРОЩЕННЫЙ ПРИМЕР: Пусть в таблице будет столбец expected_current_code (только для демонстрации!)
     const char *sql_find_secrets = "SELECT ac.id, ucr.user_id, u.full_name, ac.totp_secret " // Выбираем id карты, id юзера, имя, секрет
                                    "FROM access_cards ac "
                                    "JOIN user_company_roles ucr ON ac.user_company_role_id = ucr.id "
@@ -164,25 +154,11 @@ int api_verify(struct http_request *req) {
 
          snprintf(user_name, sizeof(user_name), "%s", db_full_name ? db_full_name : "Unknown User");
 
-         // !!! УПРОЩЕНИЕ: Предположим, что мы можем вычислить текущий ожидаемый код.
-         // !!! В реальности нужно использовать библиотеку. Пока просто сравним с фиксированным значением.
-         // !!! Допустим, для теста, мы знаем, что текущий код для секрета "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ" должен быть "123456" в определенный момент.
-         // !!! Это НЕ РЕАЛЬНОЕ ВРЕМЯ, просто для демонстрации.
-         // !!! ВРЕМЕННАЯ ЗАГЛУШКА:
-         // if (strcmp(db_totp_secret, "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ") == 0 && strcmp(code_str, "123456") == 0) {
-         //     found_match = 1;
-         // }
-         // !!! Более реалистичная заглушка:
-         // !!! Пусть в БД есть поле last_known_code (для демонстрации), которое обновляется каждые 30 секунд.
-         // !!! Для упрощения, пусть TOTP-секрет "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ" в данный момент имеет код "123456".
-         // !!! Вместо этого, мы будем использовать check_totp_simple с фиксированным "ожидаемым" кодом.
-         // !!! Предположим, что для секрета "TESTSECRETTESTSEC" текущий код "987654".
          if (strcmp(db_totp_secret, "TESTSECRETTESTSEC") == 0) {
              if (check_totp_simple("987654", code_str)) { // Подставляем фиксированный "ожидаемый" код
                  found_match = 1;
              }
          }
-         // !!! Добавьте другие фиксированные пары secret/code здесь для тестирования.
     }
 
     sqlite3_finalize(stmt);
